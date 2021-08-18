@@ -1,7 +1,6 @@
 
 (define-library (230)
   (include-c-header "<stdatomic.h>")
-  (include-c-header "230-types.h")
   (export 
 ;  memory-order
   memory-order?
@@ -9,7 +8,7 @@
   atomic-flag?
   atomic-flag-test-and-set!
   atomic-flag-clear!
-;  make-atomic-box
+  make-atomic-box
 ;  atomic-box?
 ;  atomic-box-ref
 ;  atomic-box-set!
@@ -125,13 +124,20 @@
 ;      (lock-guard
 ;       (atomic-flag-set-content! flag #f)))
 ;
-;    ;; Atomic boxes
-;
-;    (define-record-type atomic-box
-;      (make-atomic-box content)
-;      atomic-box?
-;      (content atomic-box-content atomic-box-set-content!))
-;
+    ;; Atomic boxes
+
+    (define-record-type atomic-box
+      (%make-atomic-box content)
+      atomic-box?
+      (content atomic-box-content atomic-box-set-content!))
+
+    (define (make-atomic-box c)
+      (define b (%make-atomic-box #f))
+      ;; TODO: force c onto heap now?
+      ;; TODO: (atomic-box-init b c) 
+      (Cyc-minor-gc) ;; Force b onto heap
+      b)
+
 ;    (define (atomic-box-ref box . o)
 ;      (lock-guard
 ;       (atomic-box-content box)))
@@ -155,36 +161,37 @@
 
     ;; Atomic fixnum boxes
 
-;; TODO: need to store native ints in a C opaque, otherwise GC could think they are pointers
+    ;;need to store native ints in a C opaque, otherwise GC could think they are pointers
     (define-c atomic-init
       "(void *data, int argc, closure _, object k, object box, object value)"
       " Cyc_check_fixnum(data, value);
         atomic_uintptr_t a;
         // TODO: validate v and size
+        make_c_opaque(opq, (object)a); 
         vector v = (vector)box;
-        v->elements[2] = (object) a;
-        atomic_init((uintptr_t *)(&(v->elements[2])), (uintptr_t)obj_obj2int(value));
+        v->elements[2] = &opq;
+        atomic_init((uintptr_t *)opaque_ptr(&opq), (uintptr_t)obj_obj2int(value));
         return_closcall1(data, k, box); ")
 
     (define-c atomic-load
       "(void *data, int argc, closure _, object k, object a)"
       " vector v = (vector) a;
         // TODO: validate v and size
-        uintptr_t c = atomic_load((uintptr_t *)(&(v->elements[2])));
+        uintptr_t c = atomic_load((uintptr_t *)(opaque_ptr(v->elements[2])));
         return_closcall1(data, k, obj_int2obj(c)); ")
 
     (define-c atomic-store
       "(void *data, int argc, closure _, object k, object a, object value)"
       " vector v = (vector) a;
         // TODO: validate v and size
-        atomic_store((uintptr_t *)(&(v->elements[2])), (uintptr_t)value);
+        atomic_store((uintptr_t *)(opaque_ptr(v->elements[2])), (uintptr_t)value);
         return_closcall1(data, k, boolean_f); ")
 
     (define-c atomic-fetch-add
       "(void *data, int argc, closure _, object k, object a, object m)"
       " vector v = (vector) a;
         // TODO: validate v and size
-        uintptr_t c = atomic_fetch_add((uintptr_t *)(&(v->elements[2])), (uintptr_t)obj_obj2int(m));
+        uintptr_t c = atomic_fetch_add((uintptr_t *)(opaque_ptr(v->elements[2])), (uintptr_t)obj_obj2int(m));
         return_closcall1(data, k, (object)c); ")
 
     (define-record-type atomic-fxbox
@@ -194,8 +201,8 @@
 
     (define (make-atomic-fxbox c)
       (define b (%make-atomic-fxbox #f))
-      (Cyc-minor-gc) ;; Force b onto heap
       (atomic-init b c) 
+      (Cyc-minor-gc) ;; Force b onto heap
       b)
 
     (define (atomic-fxbox-ref box . o)
