@@ -126,6 +126,23 @@
 ;
     ;; Atomic boxes
 
+;; TODO:
+;    (define-c atomic-box-init
+;      "(void *data, int argc, closure _, object k, object box, object value)"
+;      " Cyc_check_fixnum(data, value);
+;        // TODO: validate v and size
+;        vector v = (vector)box;
+;        v->elements[2] = &opq;
+;        atomic_init((uintptr_t *)opaque_ptr(&opq), (uintptr_t)obj_obj2int(value));
+;        return_closcall1(data, k, box); ")
+
+    (define-c atomic-store
+      "(void *data, int argc, closure _, object k, object a, object value)"
+      " vector v = (vector) a;
+        // TODO: validate v and size
+        atomic_store((uintptr_t *)(opaque_ptr(v->elements[2])), (uintptr_t)value);
+        return_closcall1(data, k, boolean_f); ")
+
     (define-record-type atomic-box
       (%make-atomic-box content)
       atomic-box?
@@ -179,13 +196,6 @@
         // TODO: validate v and size
         uintptr_t c = atomic_load((uintptr_t *)(opaque_ptr(v->elements[2])));
         return_closcall1(data, k, obj_int2obj(c)); ")
-
-    (define-c atomic-store
-      "(void *data, int argc, closure _, object k, object a, object value)"
-      " vector v = (vector) a;
-        // TODO: validate v and size
-        atomic_store((uintptr_t *)(opaque_ptr(v->elements[2])), (uintptr_t)value);
-        return_closcall1(data, k, boolean_f); ")
 
     (define-c atomic-fetch-add
       "(void *data, int argc, closure _, object k, object a, object m)"
