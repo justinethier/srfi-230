@@ -1,13 +1,14 @@
 
 (define-library (230)
   (include-c-header "<stdatomic.h>")
+  (include-c-header "230-types.h")
   (export 
 ;  memory-order
   memory-order?
-;  make-atomic-flag
-;  atomic-flag?
-;  atomic-flag-test-and-set!
-;  atomic-flag-clear!
+  make-atomic-flag
+  atomic-flag?
+  atomic-flag-test-and-set!
+  atomic-flag-clear!
 ;  make-atomic-box
 ;  atomic-box?
 ;  atomic-box-ref
@@ -69,22 +70,49 @@
 ;
 ;    ;; Atomic flags
 
-;    (define-c atomic-flag-init
-;      "(void *data, int argc, closure _, object k, object box)"
-;      " 
-;        atomic_flag flag = ATOMIC_FLAG_INIT;
-;        // TODO: validate v and size
-;        vector v = (vector)box;
-;        v->elements[2] = (object) flag;
-;        return_closcall1(data, k, box); ")
-;
-;    (define-record-type atomic-flag
-;      (%make-atomic-flag content)
-;      atomic-flag?
-;      (content atomic-flag-content atomic-flag-set-content!))
-;
-;    (define (make-atomic-flag)
-;      (%make-atomic-flag (atomic-flag-init)))
+    (define-c atomic-flag-init
+      "(void *data, int argc, closure _, object k, object box)"
+      " 
+        atomic_flag flag = ATOMIC_FLAG_INIT;
+        // TODO: validate v and size
+        vector v = (vector)box;
+        object_box_t *objbox = { .bits = v->elements[2] };
+        objbox.flag = flag;
+        v->elements[2] = objbox.bits;
+        return_closcall1(data, k, box); ")
+
+    (define-c atomic-flag-tas
+      "(void *data, int argc, closure _, object k, object a)"
+      " vector v = (vector) a;
+        // TODO: validate v and size
+        object_box_t objbox = { .bits = v->elements[2] };
+        _Bool b = atomic_flag_test_and_set(&(objbox.flag));
+        return_closcall1(data, k, b ? boolean_t : boolean_f);")
+
+    (define-c atomic-flag-clear
+      "(void *data, int argc, closure _, object k, object a)"
+      " vector v = (vector) a;
+        // TODO: validate v and size
+        object_box_t objbox = { .bits = v->elements[2] };
+        atomic_flag_clear(&(objbox.flag));
+        return_closcall1(data, k, boolean_f);")
+
+    (define-record-type atomic-flag
+      (%make-atomic-flag content)
+      atomic-flag?
+      (content atomic-flag-content atomic-flag-set-content!))
+
+    (define (make-atomic-flag)
+      (define b (%make-atomic-flag #f))
+      (Cyc-minor-gc)
+      (atomic-flag-init b)
+      b)
+
+    (define (atomic-flag-test-and-set! flag . o)
+      (atomic-flag-tas flag))
+
+    (define (atomic-flag-clear! flag . o)
+      (atomic-flag-clear flag))
 
 ;    (define (atomic-flag-test-and-set! flag . o)
 ;      (lock-guard
@@ -126,6 +154,7 @@
 
     ;; Atomic fixnum boxes
 
+;; TODO: need to store native ints in a C opaque, otherwise GC could think they are pointers
     (define-c atomic-init
       "(void *data, int argc, closure _, object k, object box, object value)"
       " Cyc_check_fixnum(data, value);
@@ -142,6 +171,13 @@
         // TODO: validate v and size
         uintptr_t c = atomic_load((uintptr_t *)(&(v->elements[2])));
         return_closcall1(data, k, obj_int2obj(c)); ")
+
+    (define-c atomic-store
+      "(void *data, int argc, closure _, object k, object a, object value)"
+      " vector v = (vector) a;
+        // TODO: validate v and size
+        atomic_store((uintptr_t *)(&(v->elements[2])), (uintptr_t)value);
+        return_closcall1(data, k, boolean_f); ")
 
     (define-c atomic-fetch-add
       "(void *data, int argc, closure _, object k, object a, object m)"
