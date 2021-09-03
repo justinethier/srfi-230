@@ -14,13 +14,13 @@
 ;  atomic-box-set!
 ;  atomic-box-swap!
 ;  atomic-box-compare-and-swap!
-;  make-atomic-fxbox
-;  atomic-fxbox?
-;  atomic-fxbox-ref
+  make-atomic-fxbox
+  atomic-fxbox?
+  atomic-fxbox-ref
 ;  atomic-fxbox-set!
 ;  atomic-fxbox-swap!
 ;  atomic-fxbox-compare-and-swap!
-;  atomic-fxbox+/fetch!
+  atomic-fxbox+/fetch!
 ;  atomic-fxbox-/fetch!
 ;  atomic-fxbox-and/fetch!
 ;  atomic-fxbox-ior/fetch!
@@ -29,7 +29,7 @@
 )
   (import (scheme base)
 ;  (scheme case-lambda)
-;  (srfi 18)
+  (srfi 18)
 ;  (srfi 143)
     )
   (begin
@@ -114,18 +114,52 @@
 ;	 (when (eq? expected actual)
 ;	   (atomic-box-set-content! box desired))
 ;	 actual)))
-;
-;    ;; Atomic fixnum boxes
-;
-;    (define-record-type atomic-fxbox
-;      (make-atomic-fxbox content)
-;      atomic-fxbox?
-;      (content atomic-fxbox-content atomic-fxbox-set-content!))
-;
+
+    ;; Atomic fixnum boxes
+
+    (define-c atomic-init
+      "(void *data, int argc, closure _, object k, object box, object value)"
+      " Cyc_check_fixnum(data, value);
+        atomic_uintptr_t a;
+        ((list)box)->pair_car = (object) a;
+        //_Atomic object a;
+        atomic_init((uintptr_t *)(&(((list)box)->pair_car)), (uintptr_t)obj_obj2int(value));
+        return_closcall1(data, k, box); ")
+
+    (define-c atomic-load
+      "(void *data, int argc, closure _, object k, object a)"
+      " 
+        list p = a;
+        uintptr_t c = atomic_load((uintptr_t *)(&(p->pair_car)));
+        return_closcall1(data, k, obj_int2obj(c)); ")
+
+    (define-c atomic-fetch-add
+      "(void *data, int argc, closure _, object k, object a, object m)"
+      " list p = a;
+        uintptr_t c = atomic_fetch_add((uintptr_t *)(&(p->pair_car)), (uintptr_t)obj_obj2int(m));
+        return_closcall1(data, k, (object)c); ")
+
+    (define-record-type atomic-fxbox
+      (%make-atomic-fxbox content)
+      atomic-fxbox?
+      (content atomic-fxbox-content atomic-fxbox-set-content!))
+
+    (define (make-atomic-fxbox c)
+      (define b (%make-atomic-fxbox '(#f)))
+      (Cyc-minor-gc) ;; Force b onto heap
+      (atomic-fxbox-set-content! b (atomic-init (atomic-fxbox-content b) c)) 
+      b)
+
+    (define (atomic-fxbox-ref box . o)
+      (atomic-load (atomic-fxbox-content box)))
+
+    (define (atomic-fxbox+/fetch! box n . o)
+      (atomic-fetch-add (atomic-fxbox-content box) n))
+
 ;    (define (atomic-fxbox-ref box . o)
 ;      (lock-guard
 ;       (atomic-fxbox-content box)))
-;
+
 ;    (define (atomic-fxbox-set! box obj . o)
 ;      (lock-guard
 ;       (atomic-fxbox-set-content! box obj)))
