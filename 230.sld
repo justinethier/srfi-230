@@ -68,6 +68,15 @@
 	   #t))
 ;
 ;    ;; Atomic flags
+
+;    (define-c atomic-flag-init
+;      "(void *data, int argc, closure _, object k, object box)"
+;      " 
+;        atomic_flag flag = ATOMIC_FLAG_INIT;
+;        // TODO: validate v and size
+;        vector v = (vector)box;
+;        v->elements[2] = (object) flag;
+;        return_closcall1(data, k, box); ")
 ;
 ;    (define-record-type atomic-flag
 ;      (%make-atomic-flag content)
@@ -75,8 +84,8 @@
 ;      (content atomic-flag-content atomic-flag-set-content!))
 ;
 ;    (define (make-atomic-flag)
-;      (%make-atomic-flag #f))
-;
+;      (%make-atomic-flag (atomic-flag-init)))
+
 ;    (define (atomic-flag-test-and-set! flag . o)
 ;      (lock-guard
 ;       (let ((prev (atomic-flag-content flag)))
@@ -121,22 +130,24 @@
       "(void *data, int argc, closure _, object k, object box, object value)"
       " Cyc_check_fixnum(data, value);
         atomic_uintptr_t a;
-        ((list)box)->pair_car = (object) a;
-        //_Atomic object a;
-        atomic_init((uintptr_t *)(&(((list)box)->pair_car)), (uintptr_t)obj_obj2int(value));
+        // TODO: validate v and size
+        vector v = (vector)box;
+        v->elements[2] = (object) a;
+        atomic_init((uintptr_t *)(&(v->elements[2])), (uintptr_t)obj_obj2int(value));
         return_closcall1(data, k, box); ")
 
     (define-c atomic-load
       "(void *data, int argc, closure _, object k, object a)"
-      " 
-        list p = a;
-        uintptr_t c = atomic_load((uintptr_t *)(&(p->pair_car)));
+      " vector v = (vector) a;
+        // TODO: validate v and size
+        uintptr_t c = atomic_load((uintptr_t *)(&(v->elements[2])));
         return_closcall1(data, k, obj_int2obj(c)); ")
 
     (define-c atomic-fetch-add
       "(void *data, int argc, closure _, object k, object a, object m)"
-      " list p = a;
-        uintptr_t c = atomic_fetch_add((uintptr_t *)(&(p->pair_car)), (uintptr_t)obj_obj2int(m));
+      " vector v = (vector) a;
+        // TODO: validate v and size
+        uintptr_t c = atomic_fetch_add((uintptr_t *)(&(v->elements[2])), (uintptr_t)obj_obj2int(m));
         return_closcall1(data, k, (object)c); ")
 
     (define-record-type atomic-fxbox
@@ -145,16 +156,16 @@
       (content atomic-fxbox-content atomic-fxbox-set-content!))
 
     (define (make-atomic-fxbox c)
-      (define b (%make-atomic-fxbox '(#f)))
+      (define b (%make-atomic-fxbox #f))
       (Cyc-minor-gc) ;; Force b onto heap
-      (atomic-fxbox-set-content! b (atomic-init (atomic-fxbox-content b) c)) 
+      (atomic-init b c) 
       b)
 
     (define (atomic-fxbox-ref box . o)
-      (atomic-load (atomic-fxbox-content box)))
+      (atomic-load box))
 
     (define (atomic-fxbox+/fetch! box n . o)
-      (atomic-fetch-add (atomic-fxbox-content box) n))
+      (atomic-fetch-add box n))
 
 ;    (define (atomic-fxbox-ref box . o)
 ;      (lock-guard
