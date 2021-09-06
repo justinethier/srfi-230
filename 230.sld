@@ -190,6 +190,7 @@
 
     ;; Atomic fixnum boxes
 
+;; TODO: why is this crashing from REPL?
     ;;need to store native ints in a C opaque, otherwise GC could think they are pointers
     (define-c atomic-fxbox-init
       "(void *data, int argc, closure _, object k, object box, object value)"
@@ -209,6 +210,7 @@
         uintptr_t c = atomic_load((uintptr_t *)(opaque_ptr(v->elements[2])));
         return_closcall1(data, k, obj_int2obj(c)); ")
 
+;; TODO: why is this returning wrong results?
     (define-c atomic-fxbox-fetch-add
       "(void *data, int argc, closure _, object k, object a, object m)"
       " vector v = (vector) a;
