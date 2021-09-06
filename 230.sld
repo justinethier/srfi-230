@@ -9,9 +9,9 @@
   atomic-flag-test-and-set!
   atomic-flag-clear!
   make-atomic-box
-;  atomic-box?
-;  atomic-box-ref
-;  atomic-box-set!
+  atomic-box?
+  atomic-box-ref
+  atomic-box-set!
 ;  atomic-box-swap!
 ;  atomic-box-compare-and-swap!
   make-atomic-fxbox
@@ -126,21 +126,27 @@
 ;
     ;; Atomic boxes
 
-;; TODO:
-;    (define-c atomic-box-init
-;      "(void *data, int argc, closure _, object k, object box, object value)"
-;      " Cyc_check_fixnum(data, value);
-;        // TODO: validate v and size
-;        vector v = (vector)box;
-;        v->elements[2] = &opq;
-;        atomic_init((uintptr_t *)opaque_ptr(&opq), (uintptr_t)obj_obj2int(value));
-;        return_closcall1(data, k, box); ")
+    (define-c atomic-box-init
+      "(void *data, int argc, closure _, object k, object box, object value)"
+      " 
+        // TODO: validate v and size
+        vector v = (vector)box;
+        atomic_init((uintptr_t *)(v->elements[2]), (uintptr_t)value);
+        return_closcall1(data, k, box); ")
 
-    (define-c atomic-store
+    (define-c atomic-box-load
+      "(void *data, int argc, closure _, object k, object a)"
+      " vector v = (vector) a;
+        // TODO: validate v and size
+        uintptr_t c = atomic_load((uintptr_t *)(v->elements[2]));
+        return_closcall1(data, k, (object)c); ")
+
+;; TODO: need a write barrier
+    (define-c atomic-box-store
       "(void *data, int argc, closure _, object k, object a, object value)"
       " vector v = (vector) a;
         // TODO: validate v and size
-        atomic_store((uintptr_t *)(opaque_ptr(v->elements[2])), (uintptr_t)value);
+        atomic_store((uintptr_t *)(v->elements[2]), (uintptr_t)value);
         return_closcall1(data, k, boolean_f); ")
 
     (define-record-type atomic-box
@@ -151,9 +157,15 @@
     (define (make-atomic-box c)
       (define b (%make-atomic-box #f))
       ;; TODO: force c onto heap now?
-      ;; TODO: (atomic-box-init b c) 
+      (atomic-box-init b c) 
       (Cyc-minor-gc) ;; Force b onto heap
       b)
+
+    (define (atomic-box-ref box . o)
+      (atomic-box-load box))
+
+    (define (atomic-box-set! box obj . o)
+      (atomic-box-store box obj))
 
 ;    (define (atomic-box-ref box . o)
 ;      (lock-guard
