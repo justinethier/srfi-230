@@ -2,7 +2,7 @@
 (define-library (230)
   (include-c-header "<stdatomic.h>")
   (export 
-;  memory-order
+  memory-order
   memory-order?
   make-atomic-flag
   atomic-flag?
@@ -57,10 +57,10 @@
 ;    ;; Note: On an R6RS system, the following syntax and procedure would be
 ;    ;; implemented as an enumeration type.
 ;
-;    (define-syntax memory-order
-;      (syntax-rules ()
-;	((memory-order symbol) 'symbol)))
-;
+    (define-syntax memory-order
+      (syntax-rules ()
+        ((memory-order symbol) 'symbol)))
+
     (define (memory-order? obj)
       (and (memq
 	    obj
@@ -230,6 +230,7 @@
     (fx-num-op atomic-fxbox-and/fetch! %atomic-fxbox-and/fetch! "atomic_fetch_and")
     (fx-num-op atomic-fxbox-ior/fetch! %atomic-fxbox-ior/fetch! "atomic_fetch_or")
     (fx-num-op atomic-fxbox-xor/fetch! %atomic-fxbox-xor/fetch! "atomic_fetch_xor")
+    ;(fx-void-op atomic-fxbox-set! %atomic-fxbox-set! "atomic_store")
 
     (define-record-type atomic-fxbox
       (%make-atomic-fxbox content)
