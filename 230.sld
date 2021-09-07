@@ -220,6 +220,7 @@
     (define (make-atomic-fxbox c)
       (define b (%make-atomic-fxbox #f))
       (%atomic-fxbox-init b c) 
+TODO: call make-atomic-fxbox with an empty opaque, transport all to the heap, then call atomic-fxbox-init to setup the atomic
       (Cyc-minor-gc) ;; Force b onto heap
       b)
 
