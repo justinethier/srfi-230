@@ -3,12 +3,12 @@
 	(srfi 18)
 	(230))
 
-(define *atomic-counter* (make-atomic-fxbox 0))
+(define *counter* 0)
 
 (define (task)
   (do ((i 0 (+ i 1)))
       ((= i 100000))
-    (atomic-fxbox+/fetch! *atomic-counter* 1)))
+    (set! *counter* (+ *counter* 1))))
 
 (define threads (make-vector 10))
 
@@ -22,5 +22,5 @@
     ((= i 10))
   (thread-join! (vector-ref threads i)))
 
-(display (atomic-fxbox-ref *atomic-counter*))
+(display *counter*)
 (newline)
