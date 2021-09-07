@@ -140,7 +140,7 @@
       "(void *data, int argc, closure _, object k, object a)"
       " vector v = (vector) a;
         // TODO: validate v and size
-        uintptr_t c = atomic_load((uintptr_t *)(v->elements[2]));
+        uintptr_t c = atomic_load((uintptr_t *)(&(v->elements[2])));
         return_closcall1(data, k, (object)c); ")
 
 ;; TODO: need a write barrier
@@ -148,7 +148,7 @@
       "(void *data, int argc, closure _, object k, object a, object value)"
       " vector v = (vector) a;
         // TODO: validate v and size
-        atomic_store((uintptr_t *)(v->elements[2]), (uintptr_t)value);
+        atomic_store((uintptr_t *)(&(v->elements[2])), (uintptr_t)value);
         return_closcall1(data, k, boolean_f); ")
 
     (define-record-type atomic-box
