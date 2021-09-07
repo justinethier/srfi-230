@@ -70,15 +70,13 @@
 ;    ;; Atomic flags
 
     (define-c %atomic-flag-init
-      "(void *data, int argc, closure _, object k, object box)"
+      "(void *data, int argc, closure _, object k)"
       " atomic_flag f = ATOMIC_FLAG_INIT;
         atomic_flag *flag = malloc(sizeof(atomic_flag));
         make_c_opaque(opq, flag); 
         opaque_collect_ptr(&opq) = 1; // Allow GC to free() memory
         *flag = f;
-        vector v = (vector)box;
-        v->elements[2] = &opq;
-        return_closcall1(data, k, box); ")
+        return_closcall1(data, k, &opq); ")
 
     (define-c %atomic-flag-tas
       "(void *data, int argc, closure _, object k, object a)"
@@ -100,8 +98,7 @@
       (content atomic-flag-content atomic-flag-set-content!))
 
     (define (make-atomic-flag)
-      (define b (%make-atomic-flag #f))
-      (%atomic-flag-init b)
+      (define b (%make-atomic-flag (%atomic-flag-init)))
       (Cyc-minor-gc)
       b)
 
