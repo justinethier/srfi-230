@@ -131,7 +131,9 @@
       " 
         // TODO: validate v and size
         vector v = (vector)box;
-        atomic_init((uintptr_t *)(v->elements[2]), (uintptr_t)value);
+        uintptr_t p;
+        atomic_init(&p, (uintptr_t)value);
+        v->elements[2] = (object)p;
         return_closcall1(data, k, box); ")
 
     (define-c atomic-box-load
@@ -195,27 +197,26 @@
     (define-c atomic-fxbox-init
       "(void *data, int argc, closure _, object k, object box, object value)"
       " Cyc_check_fixnum(data, value);
-        atomic_uintptr_t a;
         // TODO: validate v and size
-        make_c_opaque(opq, (object)a); 
+        atomic_uintptr_t p;
+        atomic_init(&p, (uintptr_t)obj_obj2int(value));
+        make_c_opaque(opq, (object)p);
         vector v = (vector)box;
         v->elements[2] = &opq;
-        atomic_init((uintptr_t *)opaque_ptr(&opq), (uintptr_t)obj_obj2int(value));
         return_closcall1(data, k, box); ")
 
     (define-c atomic-fxbox-load
       "(void *data, int argc, closure _, object k, object a)"
       " vector v = (vector) a;
         // TODO: validate v and size
-        uintptr_t c = atomic_load((uintptr_t *)(opaque_ptr(v->elements[2])));
+        uintptr_t c = atomic_load((uintptr_t *)(&(opaque_ptr(v->elements[2]))));
         return_closcall1(data, k, obj_int2obj(c)); ")
 
-;; TODO: why is this returning wrong results?
     (define-c atomic-fxbox-fetch-add
       "(void *data, int argc, closure _, object k, object a, object m)"
       " vector v = (vector) a;
         // TODO: validate v and size
-        uintptr_t c = atomic_fetch_add((uintptr_t *)(opaque_ptr(v->elements[2])), (uintptr_t)obj_obj2int(m));
+        uintptr_t c = atomic_fetch_add((uintptr_t *)(&(opaque_ptr(v->elements[2]))), (uintptr_t)obj_obj2int(m));
         return_closcall1(data, k, (object)c); ")
 
     (define-record-type atomic-fxbox
