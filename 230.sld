@@ -72,7 +72,6 @@
     (define-c %atomic-flag-init
       "(void *data, int argc, closure _, object k, object box)"
       " atomic_flag f = ATOMIC_FLAG_INIT;
-        // TODO: validate v and size
         atomic_flag *flag = malloc(sizeof(atomic_flag));
         make_c_opaque(opq, flag); 
         opaque_collect_ptr(&opq) = 1; // Allow GC to free() memory
@@ -84,14 +83,14 @@
     (define-c %atomic-flag-tas
       "(void *data, int argc, closure _, object k, object a)"
       " vector v = (vector) a;
-        atomic_flag *flag = v->elements[2];
+        atomic_flag *flag = opaque_ptr(v->elements[2]);
         _Bool b = atomic_flag_test_and_set(flag);
         return_closcall1(data, k, b ? boolean_t : boolean_f);")
 
     (define-c %atomic-flag-clear
       "(void *data, int argc, closure _, object k, object a)"
       " vector v = (vector) a;
-        atomic_flag *flag = v->elements[2];
+        atomic_flag *flag = opaque_ptr(v->elements[2]);
         atomic_flag_clear(flag);
         return_closcall1(data, k, boolean_f);")
 
@@ -102,8 +101,8 @@
 
     (define (make-atomic-flag)
       (define b (%make-atomic-flag #f))
-      (Cyc-minor-gc)
       (%atomic-flag-init b)
+      (Cyc-minor-gc)
       b)
 
     (define (atomic-flag-check flag)
