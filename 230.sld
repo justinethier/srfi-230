@@ -19,8 +19,8 @@
   atomic-fxbox?
   atomic-fxbox-ref
   atomic-fxbox-set!
-;  atomic-fxbox-swap!
-;  atomic-fxbox-compare-and-swap!
+  atomic-fxbox-swap!
+  atomic-fxbox-compare-and-swap!
   atomic-fxbox+/fetch!
   atomic-fxbox-/fetch!
   atomic-fxbox-and/fetch!
@@ -204,6 +204,13 @@
       " atomic_store((uintptr_t *)(&(opaque_ptr(opq))), (uintptr_t)obj_obj2int(value));
         return_closcall1(data, k, value); ")
 
+    (define-c %atomic-fxbox-compare-exchange
+      "(void *data, int argc, closure _, object k, object opq, object expected, object desired)"
+      " uintptr_t old = (uintptr_t)obj_obj2int(expected);
+        atomic_compare_exchange_strong((uintptr_t *)(&(opaque_ptr(opq))), &old, (uintptr_t)obj_obj2int(desired));
+        return_closcall1(data, k, obj_int2obj(old)); 
+        ")
+
     (define-syntax fx-num-op
       (er-macro-transformer
         (lambda (expr rename compare)
@@ -214,7 +221,7 @@
                  (body
                    (string-append
                      " uintptr_t c = " op-str "((uintptr_t *)(&(opaque_ptr(opq))), (uintptr_t)obj_obj2int(m));\n"
-                     " return_closcall1(data, k, (object)c); ")))
+                     " return_closcall1(data, k, obj_int2obj((object)c)); ")))
             `(begin 
                (define-c ,fnc ,args ,body)
                (define (,scm-fnc box n . o)
@@ -227,6 +234,7 @@
     (fx-num-op atomic-fxbox-and/fetch! %atomic-fxbox-and/fetch! "atomic_fetch_and")
     (fx-num-op atomic-fxbox-ior/fetch! %atomic-fxbox-ior/fetch! "atomic_fetch_or")
     (fx-num-op atomic-fxbox-xor/fetch! %atomic-fxbox-xor/fetch! "atomic_fetch_xor")
+    (fx-num-op atomic-fxbox-swap!      %atomic-fxbox-exchange   "atomic_exchange")
     ;(fx-void-op atomic-fxbox-set! %atomic-fxbox-set! "atomic_store")
 
     (define-record-type atomic-fxbox
@@ -252,18 +260,13 @@
       (atomic-fxbox-check box)
       (%atomic-fxbox-store (atomic-fxbox-content box) obj))
 
-;    (define (atomic-fxbox-swap! box obj . o)
-;      (lock-guard
-;       (let ((prev (atomic-fxbox-content box)))
-;	 (atomic-fxbox-set-content! box obj)
-;	 prev)))
-;
-;    (define (atomic-fxbox-compare-and-swap! box expected desired . o)
-;      (lock-guard
-;       (let ((actual (atomic-fxbox-content box)))
-;	 (when (fx=? expected actual)
-;	   (atomic-fxbox-set-content! box desired))
-;	 actual)))
+    (define (atomic-fxbox-swap! box obj . o)
+      (atomic-fxbox-check box)
+      (%atomic-fxbox-exchange (atomic-fxbox-content box) obj))
+
+    (define (atomic-fxbox-compare-and-swap! box expected desired . o)
+      (atomic-fxbox-check box)
+      (%atomic-fxbox-compare-exchange (atomic-fxbox-content box) expected desired))
 
 
     ;; Memory synchronization
