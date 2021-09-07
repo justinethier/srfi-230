@@ -151,6 +151,11 @@
         atomic_store((uintptr_t *)(&(v->elements[2])), (uintptr_t)value);
         return_closcall1(data, k, boolean_f); ")
 
+    ;; TODO: atomic_exchange
+
+    ;; TODO: atomic_compare_exchange_strong, used to implement CAS
+    ;;; take care that *expected may be overwritten
+
     (define-record-type atomic-box
       (%make-atomic-box content)
       atomic-box?
