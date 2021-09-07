@@ -69,7 +69,7 @@
 ;
 ;    ;; Atomic flags
 
-    (define-c atomic-flag-init
+    (define-c %atomic-flag-init
       "(void *data, int argc, closure _, object k, object box)"
       " atomic_flag f = ATOMIC_FLAG_INIT;
         // TODO: validate v and size
@@ -81,7 +81,7 @@
         v->elements[2] = &opq;
         return_closcall1(data, k, box); ")
 
-    (define-c atomic-flag-tas
+    (define-c %atomic-flag-tas
       "(void *data, int argc, closure _, object k, object a)"
       " vector v = (vector) a;
         // TODO: validate v and size
@@ -89,7 +89,7 @@
         _Bool b = atomic_flag_test_and_set(flag);
         return_closcall1(data, k, b ? boolean_t : boolean_f);")
 
-    (define-c atomic-flag-clear
+    (define-c %atomic-flag-clear
       "(void *data, int argc, closure _, object k, object a)"
       " vector v = (vector) a;
         // TODO: validate v and size
@@ -105,14 +105,14 @@
     (define (make-atomic-flag)
       (define b (%make-atomic-flag #f))
       (Cyc-minor-gc)
-      (atomic-flag-init b)
+      (%atomic-flag-init b)
       b)
 
     (define (atomic-flag-test-and-set! flag . o)
-      (atomic-flag-tas flag))
+      (%atomic-flag-tas flag))
 
     (define (atomic-flag-clear! flag . o)
-      (atomic-flag-clear flag))
+      (%atomic-flag-clear flag))
 
 ;    (define (atomic-flag-test-and-set! flag . o)
 ;      (lock-guard
@@ -126,7 +126,7 @@
 ;
     ;; Atomic boxes
 
-    (define-c atomic-box-init
+    (define-c %atomic-box-init
       "(void *data, int argc, closure _, object k, object box, object value)"
       " 
         // TODO: validate v and size
@@ -136,7 +136,7 @@
         v->elements[2] = (object)p;
         return_closcall1(data, k, box); ")
 
-    (define-c atomic-box-load
+    (define-c %atomic-box-load
       "(void *data, int argc, closure _, object k, object a)"
       " vector v = (vector) a;
         // TODO: validate v and size
@@ -144,7 +144,7 @@
         return_closcall1(data, k, (object)c); ")
 
 ;; TODO: need a write barrier
-    (define-c atomic-box-store
+    (define-c %atomic-box-store
       "(void *data, int argc, closure _, object k, object a, object value)"
       " vector v = (vector) a;
         // TODO: validate v and size
@@ -159,15 +159,15 @@
     (define (make-atomic-box c)
       (define b (%make-atomic-box #f))
       ;; TODO: force c onto heap now?
-      (atomic-box-init b c) 
+      (%atomic-box-init b c) 
       (Cyc-minor-gc) ;; Force b onto heap
       b)
 
     (define (atomic-box-ref box . o)
-      (atomic-box-load box))
+      (%atomic-box-load box))
 
     (define (atomic-box-set! box obj . o)
-      (atomic-box-store box obj))
+      (%atomic-box-store box obj))
 
 ;    (define (atomic-box-ref box . o)
 ;      (lock-guard
@@ -192,9 +192,8 @@
 
     ;; Atomic fixnum boxes
 
-;; TODO: why is this crashing from REPL?
-    ;;need to store native ints in a C opaque, otherwise GC could think they are pointers
-    (define-c atomic-fxbox-init
+    ;; store native ints in a C opaque, otherwise GC could think they are pointers
+    (define-c %atomic-fxbox-init
       "(void *data, int argc, closure _, object k, object box, object value)"
       " Cyc_check_fixnum(data, value);
         // TODO: validate v and size
@@ -205,14 +204,14 @@
         v->elements[2] = &opq;
         return_closcall1(data, k, box); ")
 
-    (define-c atomic-fxbox-load
+    (define-c %atomic-fxbox-load
       "(void *data, int argc, closure _, object k, object a)"
       " vector v = (vector) a;
         // TODO: validate v and size
         uintptr_t c = atomic_load((uintptr_t *)(&(opaque_ptr(v->elements[2]))));
         return_closcall1(data, k, obj_int2obj(c)); ")
 
-    (define-c atomic-fxbox-fetch-add
+    (define-c %atomic-fxbox-fetch-add
       "(void *data, int argc, closure _, object k, object a, object m)"
       " vector v = (vector) a;
         // TODO: validate v and size
@@ -226,15 +225,15 @@
 
     (define (make-atomic-fxbox c)
       (define b (%make-atomic-fxbox #f))
-      (atomic-fxbox-init b c) 
+      (%atomic-fxbox-init b c) 
       (Cyc-minor-gc) ;; Force b onto heap
       b)
 
     (define (atomic-fxbox-ref box . o)
-      (atomic-fxbox-load box))
+      (%atomic-fxbox-load box))
 
     (define (atomic-fxbox+/fetch! box n . o)
-      (atomic-fxbox-fetch-add box n))
+      (%atomic-fxbox-fetch-add box n))
 
 ;    (define (atomic-fxbox-ref box . o)
 ;      (lock-guard
