@@ -79,16 +79,14 @@
         return_closcall1(data, k, &opq); ")
 
     (define-c %atomic-flag-tas
-      "(void *data, int argc, closure _, object k, object a)"
-      " vector v = (vector) a;
-        atomic_flag *flag = opaque_ptr(v->elements[2]);
+      "(void *data, int argc, closure _, object k, object opq)"
+      " atomic_flag *flag = opaque_ptr(opq);
         _Bool b = atomic_flag_test_and_set(flag);
         return_closcall1(data, k, b ? boolean_t : boolean_f);")
 
     (define-c %atomic-flag-clear
-      "(void *data, int argc, closure _, object k, object a)"
-      " vector v = (vector) a;
-        atomic_flag *flag = opaque_ptr(v->elements[2]);
+      "(void *data, int argc, closure _, object k, object opq)"
+      " atomic_flag *flag = opaque_ptr(opq);
         atomic_flag_clear(flag);
         return_closcall1(data, k, boolean_f);")
 
@@ -108,11 +106,11 @@
 
     (define (atomic-flag-test-and-set! flag . o)
       (atomic-flag-check flag)
-      (%atomic-flag-tas flag))
+      (%atomic-flag-tas (atomic-flag-content flag)))
 
     (define (atomic-flag-clear! flag . o)
       (atomic-flag-check flag)
-      (%atomic-flag-clear flag))
+      (%atomic-flag-clear (atomic-flag-content flag)))
 
     ;; Atomic boxes
 
@@ -191,25 +189,26 @@
 
     ;; store native ints in a C opaque, otherwise GC could think they are pointers
     (define-c %atomic-fxbox-init
-      "(void *data, int argc, closure _, object k, object box, object value)"
+      "(void *data, int argc, closure _, object k, object opq, object value)"
       " Cyc_check_fixnum(data, value);
         atomic_uintptr_t p;
         atomic_init(&p, (uintptr_t)obj_obj2int(value));
-        make_c_opaque(opq, (object)p);
-        vector v = (vector)box;
-        v->elements[2] = &opq;
-        return_closcall1(data, k, box); ")
+        opaque_ptr(opq) = (object)p;
+        return_closcall1(data, k, opq); ")
+
+    (define-c %empty-opaque
+      "(void *data, int argc, closure _, object k)"
+      " make_c_opaque(opq, NULL);
+        return_closcall1(data, k, &opq); ")
 
     (define-c %atomic-fxbox-load
-      "(void *data, int argc, closure _, object k, object a)"
-      " vector v = (vector) a;
-        uintptr_t c = atomic_load((uintptr_t *)(&(opaque_ptr(v->elements[2]))));
+      "(void *data, int argc, closure _, object k, object opq)"
+      " uintptr_t c = atomic_load((uintptr_t *)(&(opaque_ptr(opq))));
         return_closcall1(data, k, obj_int2obj(c)); ")
 
     (define-c %atomic-fxbox-fetch-add
-      "(void *data, int argc, closure _, object k, object a, object m)"
-      " vector v = (vector) a;
-        uintptr_t c = atomic_fetch_add((uintptr_t *)(&(opaque_ptr(v->elements[2]))), (uintptr_t)obj_obj2int(m));
+      "(void *data, int argc, closure _, object k, object opq, object m)"
+      " uintptr_t c = atomic_fetch_add((uintptr_t *)(&(opaque_ptr(opq))), (uintptr_t)obj_obj2int(m));
         return_closcall1(data, k, (object)c); ")
 
     (define-record-type atomic-fxbox
@@ -218,10 +217,9 @@
       (content atomic-fxbox-content atomic-fxbox-set-content!))
 
     (define (make-atomic-fxbox c)
-      (define b (%make-atomic-fxbox #f))
-      (%atomic-fxbox-init b c) 
-TODO: call make-atomic-fxbox with an empty opaque, transport all to the heap, then call atomic-fxbox-init to setup the atomic
+      (define b (%make-atomic-fxbox (%empty-opaque)))
       (Cyc-minor-gc) ;; Force b onto heap
+      (%atomic-fxbox-init (atomic-fxbox-content b) c) 
       b)
 
     (define (atomic-fxbox-check box)
@@ -230,11 +228,11 @@ TODO: call make-atomic-fxbox with an empty opaque, transport all to the heap, th
 
     (define (atomic-fxbox-ref box . o)
       (atomic-fxbox-check box)
-      (%atomic-fxbox-load box))
+      (%atomic-fxbox-load (atomic-fxbox-content box)))
 
     (define (atomic-fxbox+/fetch! box n . o)
       (atomic-fxbox-check box)
-      (%atomic-fxbox-fetch-add box n))
+      (%atomic-fxbox-fetch-add (atomic-fxbox-content box) n))
 
 ;    (define (atomic-fxbox-ref box . o)
 ;      (lock-guard
