@@ -115,24 +115,23 @@
     ;; Atomic boxes
 
     (define-c %atomic-box-init
-      "(void *data, int argc, closure _, object k, object box, object value)"
-      " vector v = (vector)box;
-        uintptr_t p;
-        atomic_init(&p, (uintptr_t)value);
-        v->elements[2] = (object)p;
-        return_closcall1(data, k, box); ")
+      "(void *data, int argc, closure _, object k, object pair, object value)"
+      " pair_type *p = (pair_type*)pair;
+        atomic_init((uintptr_t *)&(p->pair_car), (uintptr_t)value);
+        //v->elements[2] = (object)ptr;
+        return_closcall1(data, k, pair); ")
 
     (define-c %atomic-box-load
-      "(void *data, int argc, closure _, object k, object a)"
-      " vector v = (vector) a;
-        uintptr_t c = atomic_load((uintptr_t *)(&(v->elements[2])));
+      "(void *data, int argc, closure _, object k, object pair)"
+      " pair_type *p = (pair_type*)pair;
+        uintptr_t c = atomic_load((uintptr_t *)(&(p->pair_car)));
         return_closcall1(data, k, (object)c); ")
 
 ;; TODO: need a write barrier
     (define-c %atomic-box-store
-      "(void *data, int argc, closure _, object k, object a, object value)"
-      " vector v = (vector) a;
-        atomic_store((uintptr_t *)(&(v->elements[2])), (uintptr_t)value);
+      "(void *data, int argc, closure _, object k, object pair, object value)"
+      " pair_type *p = (pair_type*)pair;
+        atomic_store((uintptr_t *)(&(p->pair_car)), (uintptr_t)value);
         return_closcall1(data, k, boolean_f); ")
 
     ;; TODO: atomic_exchange
@@ -146,9 +145,9 @@
       (content atomic-box-content atomic-box-set-content!))
 
     (define (make-atomic-box c)
-      (define b (%make-atomic-box #f))
+      (define b (%make-atomic-box (list #f)))
       ;; TODO: force c onto heap now?
-      (%atomic-box-init b c) 
+      (%atomic-box-init (atomic-box-content b) c) 
       (Cyc-minor-gc) ;; Force b onto heap
       b)
 
@@ -158,11 +157,11 @@
 
     (define (atomic-box-ref box . o)
       (atomic-box-check box)
-      (%atomic-box-load box))
+      (%atomic-box-load (atomic-box-content box)))
 
     (define (atomic-box-set! box obj . o)
       (atomic-box-check box)
-      (%atomic-box-store box obj))
+      (%atomic-box-store (atomic-box-content box) obj))
 
 ;    (define (atomic-box-ref box . o)
 ;      (lock-guard
