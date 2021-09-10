@@ -18,7 +18,7 @@
   make-atomic-fxbox
   atomic-fxbox?
   atomic-fxbox-ref
-;  atomic-fxbox-set!
+  atomic-fxbox-set!
 ;  atomic-fxbox-swap!
 ;  atomic-fxbox-compare-and-swap!
   atomic-fxbox+/fetch!
@@ -134,7 +134,7 @@
       "(void *data, int argc, closure _, object k, object pair, object value)"
       " pair_type *p = (pair_type*)pair;
         atomic_store((uintptr_t *)(&(p->pair_car)), (uintptr_t)value);
-        return_closcall1(data, k, boolean_f); ")
+        return_closcall1(data, k, value); ")
 
     ;; TODO: atomic_exchange
 
@@ -199,6 +199,11 @@
       " uintptr_t c = atomic_load((uintptr_t *)(&(opaque_ptr(opq))));
         return_closcall1(data, k, obj_int2obj(c)); ")
 
+    (define-c %atomic-fxbox-store
+      "(void *data, int argc, closure _, object k, object opq, object value)"
+      " atomic_store((uintptr_t *)(&(opaque_ptr(opq))), (uintptr_t)obj_obj2int(value));
+        return_closcall1(data, k, value); ")
+
     (define-syntax fx-num-op
       (er-macro-transformer
         (lambda (expr rename compare)
@@ -216,15 +221,6 @@
                  (atomic-fxbox-check box)
                  (,fnc (atomic-fxbox-content box) n))
 )))))
-
-    ;(define-c %atomic-fxbox-fetch-add
-    ;  "(void *data, int argc, closure _, object k, object opq, object m)"
-    ;  " uintptr_t c = atomic_fetch_add((uintptr_t *)(&(opaque_ptr(opq))), (uintptr_t)obj_obj2int(m));
-    ;    return_closcall1(data, k, (object)c); ")
-
-    ;(define (atomic-fxbox+/fetch! box n . o)
-    ;  (atomic-fxbox-check box)
-    ;  (%atomic-fxbox-fetch-add (atomic-fxbox-content box) n))
 
     (fx-num-op atomic-fxbox+/fetch!    %atomic-fxbox-fetch-add  "atomic_fetch_add")
     (fx-num-op atomic-fxbox-/fetch!    %atomic-fxbox-/fetch!    "atomic_fetch_sub")
@@ -252,14 +248,10 @@
       (atomic-fxbox-check box)
       (%atomic-fxbox-load (atomic-fxbox-content box)))
 
-;    (define (atomic-fxbox-ref box . o)
-;      (lock-guard
-;       (atomic-fxbox-content box)))
+    (define (atomic-fxbox-set! box obj . o)
+      (atomic-fxbox-check box)
+      (%atomic-fxbox-store (atomic-fxbox-content box) obj))
 
-;    (define (atomic-fxbox-set! box obj . o)
-;      (lock-guard
-;       (atomic-fxbox-set-content! box obj)))
-;
 ;    (define (atomic-fxbox-swap! box obj . o)
 ;      (lock-guard
 ;       (let ((prev (atomic-fxbox-content box)))
