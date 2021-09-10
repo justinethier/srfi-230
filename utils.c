@@ -1,10 +1,11 @@
-extern object quote_sequentially_91consistent;
-extern object quote_acquire_91release;
-extern object quote_release;
-extern object quote_acquire;
-extern object quote_relaxed;
+#include "cyclone/types.h"
+static object quote_sequentially_91consistent;
+static object quote_acquire_91release;
+static object quote_release;
+static object quote_acquire;
+static object quote_relaxed;
 
-memory_order scm2c_memord(object mo) {
+memory_order scm2c_memory_order(object mo) {
   if (mo == quote_acquire_91release) {
      return memory_order_acq_rel;
   } else if (mo == quote_release) {

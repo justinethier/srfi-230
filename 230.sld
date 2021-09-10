@@ -1,6 +1,7 @@
 
 (define-library (230)
   (include-c-header "<stdatomic.h>")
+  (include-c-header "utils.c")
   (export 
   memory-order
   memory-order?
@@ -25,7 +26,7 @@
   atomic-fxbox-and/fetch!
   atomic-fxbox-ior/fetch!
   atomic-fxbox-xor/fetch!
-;  atomic-fence
+  atomic-fence
 )
   (import (scheme base)
 ;  (scheme case-lambda)
@@ -271,10 +272,15 @@
 ;	 (when (fx=? expected actual)
 ;	   (atomic-fxbox-set-content! box desired))
 ;	 actual)))
-;
-;
-;    ;; Memory synchronization
-;
-;    (define (atomic-fence . o)
-;      (lock-guard (if #f #f)))
+
+
+    ;; Memory synchronization
+
+    (define (atomic-fence . o)
+      (%atomic-fence (if (pair? o) (car o) #f)))
+
+    (define-c %atomic-fence
+      "(void *data, int argc, closure _, object k, object order)"
+      " atomic_thread_fence( scm2c_memory_order(order) );
+        return_closcall1(data, k, boolean_t); ")
   ))
