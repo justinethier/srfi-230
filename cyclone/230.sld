@@ -29,46 +29,22 @@
   atomic-fence
 )
   (import (scheme base)
-;  (scheme case-lambda)
-  (srfi 18)
-;  (srfi 143)
-    )
+          (srfi 18))
   (begin
 
     ;; Internals
 
-;    (define lock (make-mutex))
-;
-;    (define-syntax lock-guard
-;      (syntax-rules ()
-;	((lock-guard . body)
-;	 (dynamic-wind
-;	   (lambda ()
-;	     (guard
-;		 (c
-;		  ((abandoned-mutex-exception? c)
-;		   #f))
-;	       (mutex-lock! lock)))
-;	   (lambda () . body)
-;	   (lambda ()
-;	     (mutex-unlock! lock))))))
-;
-;    ;; Memory orders
-;
-;    ;; Note: On an R6RS system, the following syntax and procedure would be
-;    ;; implemented as an enumeration type.
-;
     (define-syntax memory-order
       (syntax-rules ()
         ((memory-order symbol) 'symbol)))
 
     (define (memory-order? obj)
       (and (memq
-	    obj
-	    '(relaxed acquire release acquire-release sequentially-consistent))
-	   #t))
-;
-;    ;; Atomic flags
+            obj
+            '(relaxed acquire release acquire-release sequentially-consistent))
+           #t))
+
+    ;; Atomic flags
 
     (define-c %atomic-flag-init
       "(void *data, int argc, closure _, object k)"
@@ -159,7 +135,6 @@
 
     (define (make-atomic-box c)
       (define b (%make-atomic-box (list #f)))
-      ;; TODO: force c onto heap now?
       (%atomic-box-init (atomic-box-content b) c) 
       (Cyc-minor-gc) ;; Force b onto heap
       b)
@@ -186,7 +161,8 @@
 
     ;; Atomic fixnum boxes
 
-    ;; store native ints in a C opaque, otherwise GC could think they are pointers
+    ;; native ints are stored in a C opaque, otherwise GC could
+    ;; think they are pointers
     (define-c %atomic-fxbox-init
       "(void *data, int argc, closure _, object k, object opq, object value)"
       " Cyc_check_fixnum(data, value);
@@ -241,7 +217,6 @@
     (fx-num-op atomic-fxbox-ior/fetch! %atomic-fxbox-ior/fetch! "atomic_fetch_or")
     (fx-num-op atomic-fxbox-xor/fetch! %atomic-fxbox-xor/fetch! "atomic_fetch_xor")
     (fx-num-op atomic-fxbox-swap!      %atomic-fxbox-exchange   "atomic_exchange")
-    ;(fx-void-op atomic-fxbox-set! %atomic-fxbox-set! "atomic_store")
 
     (define-record-type atomic-fxbox
       (%make-atomic-fxbox content)
