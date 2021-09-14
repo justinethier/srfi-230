@@ -8,7 +8,7 @@
 
 (define (task)
   (do ((i 0 (+ i 1)))
-      ((= i 1000))
+      ((= i 100000))
     (atomic-fxbox+/fetch! *atomic-counter* 1)
     (set! *counter* (+ *counter* 1))))
 

@@ -8,7 +8,7 @@
 
 (define (task)
   (do ((i 0 (+ i 1)))
-      ((= i 1000))
+      ((= i 100000))
     (mutex-lock! *lock*)
     (set! *counter* (+ *counter* 1))
     (mutex-unlock! *lock*)))
