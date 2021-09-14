@@ -13,8 +13,8 @@
   atomic-box?
   atomic-box-ref
   atomic-box-set!
-;  atomic-box-swap!
-;  atomic-box-compare-and-swap!
+  atomic-box-swap!
+  atomic-box-compare-and-swap!
   make-atomic-fxbox
   atomic-fxbox?
   atomic-fxbox-ref
@@ -136,10 +136,21 @@
         atomic_store((uintptr_t *)(&(p->pair_car)), (uintptr_t)value);
         return_closcall1(data, k, value); ")
 
-    ;; TODO: atomic_exchange
+;; TODO: requires write barrier
+    (define-c %atomic-box-exchange
+      "(void *data, int argc, closure _, object k, object pair, object value)"
+      " pair_type *p = (pair_type*)pair;
+        uintptr_t c = atomic_exchange((uintptr_t *)(&(p->pair_car)), (uintptr_t)value);
+        return_closcall1(data, k, (object)c); ")
 
-    ;; TODO: atomic_compare_exchange_strong, used to implement CAS
-    ;;; take care that *expected may be overwritten
+;; TODO: requires a write barrier
+    (define-c %atomic-box-compare-exchange
+      "(void *data, int argc, closure _, object k, object pair, object expected, object desired)"
+      " pair_type *p = (pair_type*)pair;
+        uintptr_t old = (uintptr_t)obj_obj2int(expected);
+        atomic_compare_exchange_strong((uintptr_t *)(&(p->pair_car)), &old, (uintptr_t)desired);
+        return_closcall1(data, k, (object)old); 
+        ")
 
     (define-record-type atomic-box
       (%make-atomic-box content)
@@ -165,18 +176,13 @@
       (atomic-box-check box)
       (%atomic-box-store (atomic-box-content box) obj))
 
-;    (define (atomic-box-swap! box obj . o)
-;      (lock-guard
-;       (let ((prev (atomic-box-content box)))
-;	 (atomic-box-set-content! box obj)
-;	 prev)))
-;
-;    (define (atomic-box-compare-and-swap! box expected desired . o)
-;      (lock-guard
-;       (let ((actual (atomic-box-content box)))
-;	 (when (eq? expected actual)
-;	   (atomic-box-set-content! box desired))
-;	 actual)))
+    (define (atomic-box-swap! box obj . o)
+      (atomic-box-check box)
+      (%atomic-box-exchange (atomic-box-content box) obj))
+
+    (define (atomic-box-compare-and-swap! box expected desired . o)
+      (atomic-box-check box)
+      (%atomic-box-compare-exchange (atomic-box-content box) expected desired))
 
     ;; Atomic fixnum boxes
 
