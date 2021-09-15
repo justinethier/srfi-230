@@ -8,7 +8,12 @@
 (define (task)
   (do ((i 0 (+ i 1)))
       ((= i 100000))
-    (atomic-fxbox+/fetch! *atomic-counter* 1)))
+    ;(atomic-fxbox+/fetch! *atomic-counter* 1)
+    (let loop ()
+      (let ((expected (atomic-fxbox-ref *atomic-counter*)))
+        (if (not (eq? expected (atomic-fxbox-compare-and-swap! *atomic-counter* expected (+ expected 1))))
+            (loop))))
+    ))
 
 (define threads (make-vector 10))
 
