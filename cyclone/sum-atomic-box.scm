@@ -3,7 +3,7 @@
 	(srfi 18)
 	(230))
 
-(define *atomic-counter* (make-atomic-box 0))
+(define *atomic-counter* (make-atomic-box 0.0))
 
 (define (task)
   (do ((i 0 (+ i 1)))
