@@ -104,26 +104,49 @@
         uintptr_t c = atomic_load((uintptr_t *)(&(p->pair_car)));
         return_closcall1(data, k, (object)c); ")
 
-;; TODO: need a write barrier
-;;       see Cyc_set_car_cps() in runtime.c
     (define-c %atomic-box-store
       "(void *data, int argc, closure _, object k, object pair, object value)"
       " pair_type *p = (pair_type*)pair;
+
+        // Write barrier
+        // TODO: support objects (closure, pair, vector) that require a GC
+        //       see Cyc_set_car_cps() in runtime.c
+        int do_gc = 0;
+        value = transport_stack_value(data, pair, value, &do_gc);
+        gc_mut_update((gc_thread_data *) data, car(pair), value);
+        add_mutation(data, pair, -1, value); // Ensure val is transported
+
         atomic_store((uintptr_t *)(&(p->pair_car)), (uintptr_t)value);
         return_closcall1(data, k, value); ")
 
-;; TODO: requires write barrier
     (define-c %atomic-box-exchange
       "(void *data, int argc, closure _, object k, object pair, object value)"
       " pair_type *p = (pair_type*)pair;
+
+        // Write barrier
+        // TODO: support objects (closure, pair, vector) that require a GC
+        //       see Cyc_set_car_cps() in runtime.c
+        int do_gc = 0;
+        value = transport_stack_value(data, pair, value, &do_gc);
+        gc_mut_update((gc_thread_data *) data, car(pair), value);
+        add_mutation(data, pair, -1, value); // Ensure val is transported
+
         uintptr_t c = atomic_exchange((uintptr_t *)(&(p->pair_car)), (uintptr_t)value);
         return_closcall1(data, k, (object)c); ")
 
-;; TODO: requires a write barrier
     (define-c %atomic-box-compare-exchange
       "(void *data, int argc, closure _, object k, object pair, object expected, object desired)"
       " pair_type *p = (pair_type*)pair;
-        uintptr_t old = (uintptr_t)obj_obj2int(expected);
+        uintptr_t old = (uintptr_t)expected;
+
+        // Write barrier
+        // TODO: support objects (closure, pair, vector) that require a GC
+        //       see Cyc_set_car_cps() in runtime.c
+        int do_gc = 0;
+        desired = transport_stack_value(data, pair, desired, &do_gc);
+        gc_mut_update((gc_thread_data *) data, car(pair), desired);
+        add_mutation(data, pair, -1, desired); // Ensure val is transported
+
         atomic_compare_exchange_strong((uintptr_t *)(&(p->pair_car)), &old, (uintptr_t)desired);
         return_closcall1(data, k, (object)old); 
         ")
