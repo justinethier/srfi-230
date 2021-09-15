@@ -1,7 +1,7 @@
 (import (scheme base)
 	(scheme write)
 	(srfi 18)
-	(230))
+	(srfi 230))
 
 (define *atomic-counter* (make-atomic-box 0.0))
 

@@ -1,7 +1,7 @@
 (import (scheme base)
 	(scheme write)
 	(srfi 18)
-	(230))
+	(srfi 230))
 
 (define *flag* (make-atomic-flag))
 (define *counter* 0)

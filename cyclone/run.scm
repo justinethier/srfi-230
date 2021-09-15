@@ -1,7 +1,7 @@
 (import
   (scheme base)
   (scheme write)
-  (230))
+  (srfi 230))
 
 (define b (make-atomic-fxbox 42))
 

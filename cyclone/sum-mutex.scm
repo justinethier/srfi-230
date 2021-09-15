@@ -1,7 +1,7 @@
 (import (scheme base)
 	(scheme write)
 	(srfi 18)
-	(230))
+	(srfi 230))
 
 (define *lock* (make-mutex))
 (define *counter* 0)

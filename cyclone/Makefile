@@ -7,16 +7,16 @@ PROGS = sum-no-sync \
 SCMFILES = $(addsuffix .scm, $(PROGS))
 CFILES = $(addsuffix .c, $(PROGS))
 
-all: 230.o $(PROGS)
+all: srfi/230.o $(PROGS)
 
 $(PROGS): %: %.scm
 	cyclone $<
 	./$@
 
-230.o: 230.sld
-	cyclone 230.sld
+srfi/230.o: srfi/230.sld
+	cyclone srfi/230.sld
 
 test: all
 
 clean: 
-	rm -f $(PROGS) 230.o 230.c 230.so *.meta *.o
+	rm -f $(PROGS) srfi/230.o srfi/230.c srfi/230.so *.meta *.o

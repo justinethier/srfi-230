@@ -1,5 +1,5 @@
 
-(define-library (230)
+(define-library (srfi 230)
   (include-c-header "<stdatomic.h>")
   (include-c-header "utils.c")
   (export 
