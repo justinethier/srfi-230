@@ -10,7 +10,6 @@
   (let loop ()
     (if (atomic-flag-test-and-set! flag)
         (loop))))
-;    while( flag.test_and_set() );
 
 (define (spin-unlock flag)
   (atomic-flag-clear! flag))
@@ -18,12 +17,9 @@
 (define (task)
   (do ((i 0 (+ i 1)))
       ((= i 100000))
-
     (spin-lock *flag*)
     (set! *counter* (+ *counter* 1))
-    (spin-unlock *flag*)
-    
-    ))
+    (spin-unlock *flag*) ))
 
 (define threads (make-vector 10))
 
